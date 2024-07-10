@@ -1,4 +1,6 @@
-const knex = require('knex')({
+import knex from 'knex';
+
+const db = knex({
     client: 'sqlite3',
     connection: {
         filename: './mydb.sqlite',
@@ -6,9 +8,9 @@ const knex = require('knex')({
     useNullAsDefault: true,
 });
 
-knex.schema.hasTable('users').then((exists) => {
+db.schema.hasTable('users').then((exists) => {
     if (!exists) {
-        return knex.schema.createTable('users', (table) => {
+        return db.schema.createTable('users', (table) => {
             table.increments('id').primary();
             table.string('name');
             table.string('email');
@@ -16,4 +18,4 @@ knex.schema.hasTable('users').then((exists) => {
     }
 });
 
-module.exports = knex;
+export default db;
