@@ -54,7 +54,7 @@ export default function Tasks() {
               />
             }>
               <ListItemAvatar>
-                <Avatar alt="Remy Sharp" src={`/static/images/avatar/${task.userId}.jpg`} />
+                <Avatar alt="Remy Sharp" src={task.avatar} />
               </ListItemAvatar>
               <ListItemText
                 primary={task.title}
