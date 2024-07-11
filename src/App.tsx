@@ -1,24 +1,20 @@
-import { useState } from 'react'
-import './App.css'
-import UserList from './components/UserList';
-import { Box, Container, Tab, Tabs, Typography } from '@mui/material';
-import BasicTabs from './components/BasicTabs.jsx';
-
+import React from 'react';
+import CssBaseline from '@mui/material/CssBaseline';
+import Container from '@mui/material/Container';
+import Box from '@mui/material/Box';
+import BasicTabs from './components/BasicTabs';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <Container fixed>
-      <BasicTabs />
-      <Box sx={{ bgcolor: '#cfe8fc', height: '100w' }} />
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" sx={{ mb: 2 }}>
-          Material UI Vite.js example
-        </Typography>
-      </Box>
-    </Container>
-  )
+    <React.Fragment>
+      <CssBaseline />
+      <Container maxWidth="lg" style={{ height: '100%', display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
+        <Box sx={{flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <BasicTabs />
+        </Box>
+      </Container>
+    </React.Fragment>
+  );
 }
 
-export default App
+export default App;

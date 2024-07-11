@@ -19,7 +19,7 @@ const UserList = () => {
             <List>
                 {users.map(user => (
                     <ListItem key={user.id}>
-                        <ListItemText primary={user.name} secondary={user.email} />
+                        <ListItemText primary={user.name} secondary={user.id} />
                     </ListItem>
                 ))}
             </List>
