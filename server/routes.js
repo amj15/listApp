@@ -1,8 +1,21 @@
 import { Router } from 'express';
 import db from './database.js';
 import { getTasks } from './repositories/tasks.js';
+import multer from 'multer';
+import path from 'path';
+import { v4 as uuidv4 } from uuidv4; 
 
 const router = Router();
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(__dirname, 'public/static/images/avatar'));
+    },
+    filename: (req, file, cb) => {
+      cb(null, `${uuidv4()}-${file.originalname}`);
+    },
+  });
+
+const upload = multer({ storage });
 
 router.get('/', (req, res) => {
     res.json({status: 'ok'});
@@ -18,27 +31,27 @@ router.get('/users', async (req, res) => {
     }
 });
 
-// Crear un nuevo usuario
-router.post('/users', async (req, res) => {
-    const { name, image } = req.body;
+router.post('/users', upload.single('image'), async (req, res) => {
     try {
-        const [id] = await db('users').insert({ name, image });
-        res.status(201).json({ id, name, image });
+      const { name } = req.body;
+      const image = `/static/images/avatar/${req.file.filename}`;
+      const [newUser] = await db('users').insert({ name, image }).returning('*');
+      res.json(newUser);
     } catch (error) {
-        res.status(500).json({ error: 'Error creating user' });
+      res.status(500).json({ error: 'Failed to create user' });
     }
-});
-
-// Actualizar un usuario existente
-router.put('/users/:id', async (req, res) => {
+  });
+  
+router.put('/users/:id', upload.single('image'), async (req, res) => {
+try {
     const { id } = req.params;
-    const { name, image } = req.body;
-    try {
-        await db('users').where({ id }).update({ name, image });
-        res.json({ id, name, image });
-    } catch (error) {
-        res.status(500).json({ error: 'Error updating user' });
-    }
+    const { name } = req.body;
+    const image = req.file ? `/static/images/avatar/${req.file.filename}` : undefined;
+    const [updatedUser] = await db('users').where({ id }).update({ name, image }).returning('*');
+    res.json(updatedUser);
+} catch (error) {
+    res.status(500).json({ error: 'Failed to update user' });
+}
 });
 
 // Eliminar un usuario
@@ -52,9 +65,44 @@ router.delete('/users/:id', async (req, res) => {
     }
 });
 
-router.get('/tasks', async(req,res) => {
-    const tasks = await getTasks();
-    res.json(tasks);
-});
+router.get('/tasks', async (req, res) => {
+    try {
+      const tasks = await getTasks();
+      res.json(tasks);
+    } catch (error) {
+      res.status(500).json({ error: 'Error fetching tasks' });
+    }
+  });
+  
+  router.post('/tasks', async (req, res) => {
+    try {
+      const { title, description, userId, done } = req.body;
+      const [newTask] = await db('tasks').insert({ title, description, userId, done }).returning('*');
+      res.json(newTask);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to create task' });
+    }
+  });
+  
+  router.put('/tasks/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title, description, userId, done } = req.body;
+      const [updatedTask] = await db('tasks').where({ id }).update({ title, description, userId, done }).returning('*');
+      res.json(updatedTask);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update task' });
+    }
+  });
+  
+  router.delete('/tasks/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await db('tasks').where({ id }).del();
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete task' });
+    }
+  });
 
 export default router;

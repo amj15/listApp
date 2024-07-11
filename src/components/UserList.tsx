@@ -1,29 +1,29 @@
 import * as React from 'react';
 import axios from 'axios';
 import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, Avatar, IconButton
 } from '@mui/material';
+import { Add, Edit, Delete } from '@mui/icons-material';
 
 export default function UserList() {
   const [users, setUsers] = React.useState([]);
   const [open, setOpen] = React.useState(false);
-  const [newUser, setNewUser] = React.useState({ id: null, name: '', image: '' });
+  const [newUser, setNewUser] = React.useState({ id: '', name: '', image: null });
+  const [editMode, setEditMode] = React.useState(false);
 
   React.useEffect(() => {
-    fetchUsers();
+    axios.get('/api/users')
+      .then((response) => {
+        setUsers(response.data);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   }, []);
 
-  const fetchUsers = async () => {
-    try {
-      const response = await axios.get('/api/users');
-      setUsers(response.data);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
-  };
-
-  const handleOpen = (user = { id: null, name: '', image: '' }) => {
-    setNewUser(user);
+  const handleClickOpen = (user) => {
+    setNewUser(user || { id: '', name: '', image: null });
+    setEditMode(!!user);
     setOpen(true);
   };
 
@@ -31,29 +31,35 @@ export default function UserList() {
     setOpen(false);
   };
 
-  const handleSave = async () => {
-    try {
-      if (newUser.id) {
-        // Update existing user
-        await axios.put(`/api/users/${newUser.id}`, newUser);
-      } else {
-        // Create new user
-        await axios.post('/api/users', newUser);
-      }
-      fetchUsers();
-      handleClose();
-    } catch (error) {
-      console.error('Error saving user:', error);
+  const handleSave = () => {
+    const formData = new FormData();
+    formData.append('name', newUser.name);
+    if (newUser.image) {
+      formData.append('image', newUser.image);
     }
+
+    const method = editMode ? 'put' : 'post';
+    const url = editMode ? `/api/users/${newUser.id}` : '/api/users';
+    axios[method](url, formData)
+      .then((response) => {
+        setUsers(editMode
+          ? users.map(u => (u.id === newUser.id ? response.data : u))
+          : [...users, response.data]);
+        setOpen(false);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   };
 
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`/api/users/${id}`);
-      fetchUsers();
-    } catch (error) {
-      console.error('Error deleting user:', error);
-    }
+  const handleDelete = (id) => {
+    axios.delete(`/api/users/${id}`)
+      .then(() => {
+        setUsers(users.filter(u => u.id !== id));
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   };
 
   return (
@@ -61,55 +67,59 @@ export default function UserList() {
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>ID</TableCell>
+            <TableCell>Avatar</TableCell>
             <TableCell>Name</TableCell>
-            <TableCell>Image</TableCell>
             <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {users.map((user) => (
             <TableRow key={user.id}>
-              <TableCell>{user.id}</TableCell>
-              <TableCell>{user.name}</TableCell>
-              <TableCell><img src={user.image} alt={user.name} width="50" /></TableCell>
               <TableCell>
-                <Button onClick={() => handleOpen(user)}>Edit</Button>
-                <Button onClick={() => handleDelete(user.id)}>Delete</Button>
+                <Avatar src={user.image} />
+              </TableCell>
+              <TableCell>{user.name}</TableCell>
+              <TableCell>
+                <IconButton onClick={() => handleClickOpen(user)}>
+                  <Edit />
+                </IconButton>
+                <IconButton onClick={() => handleDelete(user.id)}>
+                  <Delete />
+                </IconButton>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      <Button onClick={() => handleOpen()}>Add User</Button>
-
+      <Button variant="contained" color="primary" onClick={() => handleClickOpen()}>
+        <Add /> Add User
+      </Button>
       <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>{newUser.id ? 'Edit User' : 'Add User'}</DialogTitle>
+        <DialogTitle>{editMode ? 'Edit User' : 'Add User'}</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            {newUser.id ? 'Edit the details of the user.' : 'Enter the details of the new user.'}
-          </DialogContentText>
           <TextField
-            autoFocus
             margin="dense"
             label="Name"
-            type="text"
             fullWidth
             value={newUser.name}
             onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
           />
-          <TextField
-            margin="dense"
-            label="Image URL"
-            type="text"
-            fullWidth
-            value={newUser.image}
-            onChange={(e) => setNewUser({ ...newUser, image: e.target.value })}
+          <input
+            accept="image/*"
+            style={{ display: 'none' }}
+            id="upload-avatar"
+            type="file"
+            onChange={(e) => setNewUser({ ...newUser, image: e.target.files[0] })}
           />
+          <label htmlFor="upload-avatar">
+            <Button variant="contained" color="primary" component="span">
+              Upload Avatar
+            </Button>
+          </label>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleSave} color="primary">{editMode ? 'Update' : 'Save'}</Button>
         </DialogActions>
       </Dialog>
     </TableContainer>

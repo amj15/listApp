@@ -1,103 +1,193 @@
 import * as React from 'react';
 import axios from 'axios';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemAvatar from '@mui/material/ListItemAvatar';
-import Checkbox from '@mui/material/Checkbox';
-import Avatar from '@mui/material/Avatar';
-import { Divider, Typography } from '@mui/material';
+import {
+  List, ListItem, ListItemButton, ListItemText, ListItemAvatar, Checkbox, Avatar, Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Box, MenuItem, Select, InputLabel, FormControl, Typography
+} from '@mui/material';
 
 export default function Tasks() {
-  const [checked, setChecked] = React.useState<number[]>([]);
-  const [tasks, setTasks] = React.useState<any[]>([]); // Estado para almacenar las tareas
+  const [tasks, setTasks] = React.useState([]);
+  const [users, setUsers] = React.useState([]);
+  const [open, setOpen] = React.useState(false);
+  const [newTask, setNewTask] = React.useState({
+    id: '',
+    title: '',
+    description: '',
+    userId: '',
+    done: false,
+  });
+  const [editMode, setEditMode] = React.useState(false);
 
   React.useEffect(() => {
-    // Llamada a la API para obtener las tareas
-    axios.get('/api/tasks') // Reemplaza con la URL de tu API
-      .then(response => {
-        console.log(response);
+    axios.get('/api/tasks')
+      .then((response) => {
         setTasks(response.data);
       })
-      .catch(error => {
-        console.error('Error fetching tasks:', error);
+      .catch((error) => {
+        console.error(error);
+      });
+
+    axios.get('/api/users')
+      .then((response) => {
+        setUsers(response.data);
+      })
+      .catch((error) => {
+        console.error(error);
       });
   }, []);
 
-  const handleToggle = (value: number) => () => {
-    const currentIndex = checked.indexOf(value);
-    const newChecked = [...checked];
+  const handleToggle = (task) => () => {
+    axios.put(`/api/tasks/${task.id}`, { ...task, done: !task.done })
+      .then((response) => {
+        setTasks(tasks.map(t => (t.id === task.id ? response.data : t)));
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  };
 
-    if (currentIndex === -1) {
-      newChecked.push(value);
-    } else {
-      newChecked.splice(currentIndex, 1);
-    }
+  const handleClickOpen = (task) => {
+    setNewTask(task || {
+      id: '',
+      title: '',
+      description: '',
+      userId: '',
+      done: false,
+    });
+    setEditMode(!!task);
+    setOpen(true);
+  };
 
-    setChecked(newChecked);
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const handleSave = () => {
+    const method = editMode ? 'put' : 'post';
+    const url = editMode ? `/api/tasks/${newTask.id}` : '/api/tasks';
+    axios[method](url, newTask)
+      .then((response) => {
+        setTasks(editMode
+          ? tasks.map(t => (t.id === newTask.id ? response.data : t))
+          : [...tasks, response.data]);
+        setOpen(false);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   };
 
   return (
-    <List dense sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
-      {tasks.map((task) => {
-        const labelId = `checkbox-list-secondary-label-${task.id}`;
-        return (
-          <>
-            <ListItem alignItems="flex-start"
-            secondaryAction={
-              <Checkbox
-                edge="end"
-                onChange={handleToggle(task.id)}
-                checked={checked.indexOf(task.id) !== -1}
-                inputProps={{ 'aria-labelledby': labelId }}
-              />
-            }>
-              <ListItemAvatar>
-                <Avatar alt="Remy Sharp" src={task.avatar} />
-              </ListItemAvatar>
-              <ListItemText
-                primary={task.title}
-                secondary={
-                  <React.Fragment>
-                    <Typography
-                      sx={{ display: 'inline' }}
-                      component="span"
-                      variant="body2"
-                      color="text.primary"
-                    >{task.maxDueDate}
-                    </Typography>
-                    {task.description}
-                  </React.Fragment>
-                }
-              />
-            </ListItem>
-            <Divider variant="inset" component="li" />
-          </>
-        );
-      })}
-          {/* <ListItem
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h4" gutterBottom>
+        Task List
+      </Typography>
+      <Button variant="contained" color="primary" onClick={() => handleClickOpen()}>
+        Add Task
+      </Button>
+      <List dense sx={{ width: '100%', bgcolor: 'background.paper' }}>
+        {tasks.filter(task => !task.done).map((task) => (
+          <ListItem
             key={task.id}
             secondaryAction={
               <Checkbox
                 edge="end"
-                onChange={handleToggle(task.id)}
-                checked={checked.indexOf(task.id) !== -1}
-                inputProps={{ 'aria-labelledby': labelId }}
+                onChange={handleToggle(task)}
+                checked={Boolean(task.done)}
+                inputProps={{ 'aria-labelledby': `checkbox-list-secondary-label-${task.id}` }}
               />
             }
             disablePadding
           >
-            <ListItemButton>
+            <ListItemButton onClick={() => handleClickOpen(task)}>
               <ListItemAvatar>
                 <Avatar
-                  alt={`Avatar n°${task.id}`}
-                  src={`/static/images/avatar/${task.userId}.jpg`} // Puedes ajustar esto según tus necesidades
+                  alt={`Avatar n°${task.userId}`}
+                  src={users.find(user => user.id === task.userId)?.image}
                 />
               </ListItemAvatar>
-              <ListItemText id={labelId} primary={task.title} />
+              <ListItemText
+                id={`checkbox-list-secondary-label-${task.id}`}
+                primary={task.title}
+                secondary={task.description}
+              />
             </ListItemButton>
-          </ListItem> */}
-    </List>
+          </ListItem>
+        ))}
+        <Divider />
+        {tasks.filter(task => task.done).map((task) => (
+          <ListItem
+            key={task.id}
+            secondaryAction={
+              <Checkbox
+                edge="end"
+                onChange={handleToggle(task)}
+                checked={Boolean(task.done)}
+                inputProps={{ 'aria-labelledby': `checkbox-list-secondary-label-${task.id}` }}
+              />
+            }
+            disablePadding
+          >
+            <ListItemButton disabled>
+              <ListItemAvatar>
+                <Avatar
+                  alt={`Avatar n°${task.userId}`}
+                  src={users.find(user => user.id === task.userId)?.image}
+                />
+              </ListItemAvatar>
+              <ListItemText
+                id={`checkbox-list-secondary-label-${task.id}`}
+                primary={task.title}
+                secondary={task.description}
+                sx={{ textDecoration: task.done ? 'line-through' : 'none' }}
+              />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+      <Dialog open={open} onClose={handleClose}>
+        <DialogTitle>{editMode ? 'Edit Task' : 'Add Task'}</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="Title"
+            fullWidth
+            value={newTask.title}
+            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            fullWidth
+            value={newTask.description}
+            onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+          />
+          <FormControl fullWidth margin="dense">
+            <InputLabel id="user-select-label">User</InputLabel>
+            <Select
+              labelId="user-select-label"
+              value={newTask.userId}
+              onChange={(e) => setNewTask({ ...newTask, userId: e.target.value })}
+              renderValue={(selected) => {
+                const user = users.find(u => u.id === selected);
+                return user ? `${user.name} (${user.id})` : '';
+              }}
+            >
+              {users.map((user) => (
+                <MenuItem key={user.id} value={user.id}>
+                  <ListItemAvatar>
+                    <Avatar src={user.image} />
+                  </ListItemAvatar>
+                  <ListItemText primary={user.name} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleSave} color="primary">{editMode ? 'Update' : 'Save'}</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
