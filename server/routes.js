@@ -3,17 +3,22 @@ import db from './database.js';
 import { getTasks } from './repositories/tasks.js';
 import multer from 'multer';
 import path from 'path';
-import { v4 as uuidv4 } from uuidv4; 
-
+import { v4 as uuidv4 } from 'uuid';
+import { fileURLToPath } from 'url';
 const router = Router();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Configuración de multer para subir archivos
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, path.join(__dirname, 'public/static/images/avatar'));
-    },
-    filename: (req, file, cb) => {
-      cb(null, `${uuidv4()}-${file.originalname}`);
-    },
-  });
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, 'public/static/images/avatar'));
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${uuidv4()}-${file.originalname}`);
+  },
+});
 
 const upload = multer({ storage });
 
@@ -33,26 +38,36 @@ router.get('/users', async (req, res) => {
 
 router.post('/users', upload.single('image'), async (req, res) => {
     try {
+      console.log('Request body:', req.body);
+      console.log('Request file:', req.file);
+  
       const { name } = req.body;
       const image = `/static/images/avatar/${req.file.filename}`;
+  
       const [newUser] = await db('users').insert({ name, image }).returning('*');
       res.json(newUser);
     } catch (error) {
+      console.error('Error creating user:', error);
       res.status(500).json({ error: 'Failed to create user' });
     }
   });
   
-router.put('/users/:id', upload.single('image'), async (req, res) => {
-try {
-    const { id } = req.params;
-    const { name } = req.body;
-    const image = req.file ? `/static/images/avatar/${req.file.filename}` : undefined;
-    const [updatedUser] = await db('users').where({ id }).update({ name, image }).returning('*');
-    res.json(updatedUser);
-} catch (error) {
-    res.status(500).json({ error: 'Failed to update user' });
-}
-});
+  router.put('/users/:id', upload.single('image'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name } = req.body;
+      const image = req.file ? `/static/images/avatar/${req.file.filename}` : undefined;
+  
+      const [updatedUser] = await db('users')
+        .where({ id })
+        .update({ name, image })
+        .returning('*');
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      res.status(500).json({ error: 'Failed to update user' });
+    }
+  });
 
 // Eliminar un usuario
 router.delete('/users/:id', async (req, res) => {

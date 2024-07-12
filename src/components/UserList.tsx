@@ -1,127 +1,136 @@
-import * as React from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, Avatar, IconButton
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Avatar
 } from '@mui/material';
-import { Add, Edit, Delete } from '@mui/icons-material';
+import { Edit, Delete } from '@mui/icons-material';
 
-export default function UserList() {
-  const [users, setUsers] = React.useState([]);
-  const [open, setOpen] = React.useState(false);
-  const [newUser, setNewUser] = React.useState({ id: '', name: '', image: null });
-  const [editMode, setEditMode] = React.useState(false);
+const UserList = () => {
+  const [users, setUsers] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [formData, setFormData] = useState({ id: '', name: '', image: null });
 
-  React.useEffect(() => {
-    axios.get('/api/users')
-      .then((response) => {
-        setUsers(response.data);
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+  useEffect(() => {
+    fetchUsers();
   }, []);
 
-  const handleClickOpen = (user) => {
-    setNewUser(user || { id: '', name: '', image: null });
-    setEditMode(!!user);
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get('/api/users');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const handleOpen = (user = { id: '', name: '', image: null }) => {
+    setFormData(user);
     setOpen(true);
   };
 
   const handleClose = () => {
     setOpen(false);
+    setFormData({ id: '', name: '', image: null });
   };
 
-  const handleSave = () => {
-    const formData = new FormData();
-    formData.append('name', newUser.name);
-    if (newUser.image) {
-      formData.append('image', newUser.image);
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: files ? files[0] : value,
+    }));
+  };
+
+  const handleSubmit = async () => {
+    const data = new FormData();
+    data.append('name', formData.name);
+    if (formData.image) {
+      data.append('image', formData.image);
     }
 
-    const method = editMode ? 'put' : 'post';
-    const url = editMode ? `/api/users/${newUser.id}` : '/api/users';
-    axios[method](url, formData)
-      .then((response) => {
-        setUsers(editMode
-          ? users.map(u => (u.id === newUser.id ? response.data : u))
-          : [...users, response.data]);
-        setOpen(false);
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+    try {
+      if (formData.id) {
+        await axios.put(`/api/users/${formData.id}`, data, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } else {
+        await axios.post('/api/users', data, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
+      fetchUsers();
+      handleClose();
+    } catch (error) {
+      console.error('Error saving user:', error);
+    }
   };
 
-  const handleDelete = (id) => {
-    axios.delete(`/api/users/${id}`)
-      .then(() => {
-        setUsers(users.filter(u => u.id !== id));
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`/api/users/${id}`);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+    }
   };
 
   return (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Avatar</TableCell>
-            <TableCell>Name</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {users.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell>
-                <Avatar src={user.image} />
-              </TableCell>
-              <TableCell>{user.name}</TableCell>
-              <TableCell>
-                <IconButton onClick={() => handleClickOpen(user)}>
-                  <Edit />
-                </IconButton>
-                <IconButton onClick={() => handleDelete(user.id)}>
-                  <Delete />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <Button variant="contained" color="primary" onClick={() => handleClickOpen()}>
-        <Add /> Add User
+    <>
+      <Button variant="contained" color="primary" onClick={() => handleOpen()}>
+        Add User
       </Button>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Avatar</TableCell>
+              <TableCell>Name</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell><Avatar src={user.image} /></TableCell>
+                <TableCell>{user.name}</TableCell>
+                <TableCell>
+                  <IconButton onClick={() => handleOpen(user)}><Edit /></IconButton>
+                  <IconButton onClick={() => handleDelete(user.id)}><Delete /></IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
       <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>{editMode ? 'Edit User' : 'Add User'}</DialogTitle>
+        <DialogTitle>{formData.id ? 'Edit User' : 'Add User'}</DialogTitle>
         <DialogContent>
           <TextField
             margin="dense"
+            name="name"
             label="Name"
             fullWidth
-            value={newUser.name}
-            onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+            value={formData.name}
+            onChange={handleChange}
           />
           <input
-            accept="image/*"
-            style={{ display: 'none' }}
-            id="upload-avatar"
             type="file"
-            onChange={(e) => setNewUser({ ...newUser, image: e.target.files[0] })}
+            name="image"
+            onChange={handleChange}
           />
-          <label htmlFor="upload-avatar">
-            <Button variant="contained" color="primary" component="span">
-              Upload Avatar
-            </Button>
-          </label>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSave} color="primary">{editMode ? 'Update' : 'Save'}</Button>
+          <Button onClick={handleClose} color="primary">Cancel</Button>
+          <Button onClick={handleSubmit} color="primary">Save</Button>
         </DialogActions>
       </Dialog>
-    </TableContainer>
+    </>
   );
-}
+};
+
+export default UserList;
