@@ -175,7 +175,7 @@ export default function Tasks() {
               {users.map((user) => (
                 <MenuItem key={user.id} value={user.id}>
                   <ListItemAvatar>
-                    <Avatar src={user.image} />
+                    <Avatar src={`/static/images/avatar/${user.image}`} />
                   </ListItemAvatar>
                   <ListItemText primary={user.name} />
                 </MenuItem>
