@@ -56,7 +56,8 @@ const UserList = () => {
           },
         });
       } else {
-        await axios.post('/api/users', data, {
+        console.log(formData);
+        await axios.post('http://localhost:8081/api/users', data, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
