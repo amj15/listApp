@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 
 // Configuración de multer para subir archivos
 const storage = multer.diskStorage({
-  destination: path.join(__dirname, 'public/static/images/avatar/'),
+  destination: path.join(__dirname, '../public/static/images/avatar/'),
   filename: (req, file, cb) => {
     cb(null, `${uuidv4()}-${file.originalname}`);
   },
@@ -40,7 +40,7 @@ router.post('/users', upload.single('image'), async (req, res) => {
       console.log('Request file:', req.file);
   
       const { name } = req.body;
-      const image = `/static/images/avatar/${req.file.filename}`;
+      const image = req.file.filename;
   
       const [newUser] = await db('users').insert({ name, image }).returning('*');
       res.json(newUser);
@@ -52,11 +52,9 @@ router.post('/users', upload.single('image'), async (req, res) => {
   
   router.put('/users/:id', upload.single('image'), async (req, res) => {
     try {
-        console.log('Request body:', req.body);
-      console.log('Request file:', req.file);
       const { id } = req.params;
       const { name } = req.body;
-      const image = req.file ? `/static/images/avatar/${req.file.filename}` : undefined;
+      const image = req.file.filename;
   
       const [updatedUser] = await db('users')
         .where({ id })
