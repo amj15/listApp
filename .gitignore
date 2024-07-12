@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-publis/static/images/avatar/*
+public/static/images/avatar/*
 dist
 dist-ssr
 *.local
