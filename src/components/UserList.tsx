@@ -56,8 +56,7 @@ const UserList = () => {
           },
         });
       } else {
-        console.log(formData);
-        await axios.post('http://localhost:8081/api/users', data, {
+        await axios.post('/api/users', data, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -96,7 +95,7 @@ const UserList = () => {
           <TableBody>
             {users.map((user) => (
               <TableRow key={user.id}>
-                <TableCell><Avatar src={user.image} /></TableCell>
+                <TableCell><Avatar src={`/static/images/avatar/${user.image}`} /></TableCell>
                 <TableCell>{user.name}</TableCell>
                 <TableCell>
                   <IconButton onClick={() => handleOpen(user)}><Edit /></IconButton>
