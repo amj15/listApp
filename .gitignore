@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 public/static/images/avatar/*
+server/credentials.json
+server/token.json
 mydb.sqlite
 dist
 dist-ssr

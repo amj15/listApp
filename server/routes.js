@@ -5,6 +5,8 @@ import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
+import { google } from 'googleapis';
+import fs from 'fs';
 const router = Router();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -117,5 +119,120 @@ router.get('/tasks', async (req, res) => {
       res.status(500).json({ error: 'Failed to delete task' });
     }
   });
+
+
+// Configuración de Google Calendar
+const SCOPES = ['https://www.googleapis.com/auth/calendar'];
+const TOKEN_PATH = path.join(__dirname, 'token.json');
+const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json');
+
+let oauth2Client;
+
+// Load client secrets from a local file.
+fs.readFile(CREDENTIALS_PATH, (err, content) => {
+  if (err) return console.log('Error loading client secret file:', err);
+  authorize(JSON.parse(content));
+});
+
+function authorize(credentials) {
+  const { client_secret, client_id, redirect_uris } = credentials.web;
+  oauth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+
+  fs.readFile(TOKEN_PATH, (err, token) => {
+    if (err) {
+      getAccessToken(oauth2Client);
+    } else {
+      oauth2Client.setCredentials(JSON.parse(token));
+    }
+  });
+}
+
+function getAccessToken(oauth2Client) {
+  const authUrl = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES,
+  });
+  console.log('Authorize this app by visiting this url:', authUrl);
+
+  // You need to implement this part to handle the authorization code
+  // and exchange it for a token. This is typically done in a web server
+  // environment where the user can visit the URL and authorize the app.
+}
+
+router.get('/oauth2callback', async (req, res) => {
+    const code = req.query.code;
+  
+    try {
+      const { tokens } = await oauth2Client.getToken(code);
+      oauth2Client.setCredentials(tokens);
+  
+      // Store the token to disk for later program executions
+      fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens));
+      res.send('Authorization successful. You can close this window.');
+    } catch (error) {
+      res.status(500).send('Error while trying to retrieve access token');
+    }
+  });
+
+// CRUD operations for Google Calendar
+router.post('/create-event', async (req, res) => {
+  const { summary, description, start, end } = req.body;
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+  const event = {
+    summary,
+    description,
+    start: {
+      dateTime: start,
+    },
+    end: {
+      dateTime: end,
+    },
+  };
+
+  try {
+    const response = await calendar.events.insert({
+      calendarId: 'primary',
+      resource: event,
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+router.get('/events', async (req, res) => {
+    console.log('Holi');
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    console.log(calendar);
+  try {
+    const response = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: new Date().toISOString(),
+      maxResults: 10,
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+    res.json(response.data.items);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
+router.delete('/delete-event/:eventId', async (req, res) => {
+  const { eventId } = req.params;
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+  try {
+    await calendar.events.delete({
+      calendarId: 'primary',
+      eventId,
+    });
+    res.sendStatus(204);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
 
 export default router;

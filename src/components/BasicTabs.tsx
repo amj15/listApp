@@ -10,6 +10,7 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import Shopping from './Shopping';
 import Tasks from './Tasks';
 import UserList from './UserList';
+import CustomCalendar from './CustomCalendar';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -79,7 +80,7 @@ export default function BasicTabs() {
         <Tab icon={<ShoppingCartIcon />} iconPosition="start" label="Usuarios" {...a11yProps(3)} />
       </TabsContainer>
       <TabPanel value={value} index={0}>
-        Item One
+        <CustomCalendar />
       </TabPanel>
       <TabPanel value={value} index={1}>
         <Shopping />
